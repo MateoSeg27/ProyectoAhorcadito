@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ahorcadito</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Adivina la palabra</h1>
+
+    <p class="palabra">{{ palabra }}</p>
+    <p>Intentos restantes: {{ intentos }}</p>
+    <p>Letras usadas: {{ letras_usadas }}</p>
+
+    {% if not fin %}
+    <form action="/intento" method="post">
+        <input type="text" name="letra" maxlength="1" required>
+        <button type="submit">Probar letra</button>
+    </form>
+    {% else %}
+        {% if intentos > 0 %}
+            <p class="victoria">¡Ganaste! 🎉</p>
+        {% else %}
+            <p class="derrota">Perdiste 😢 - La palabra era: {{ palabra_real }}</p>
+        {% endif %}
+        <form action="/nuevo_juego" method="post">
+            <button type="submit">Jugar otra vez</button>
+        </form>
+    {% endif %}
+</body>
+</html>
