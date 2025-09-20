@@ -19,30 +19,36 @@ juego = {
     "intentos": 6
 }
 
+# Guardar la última palabra usada para no repetirla
+ultima_palabra = None
+
 def obtener_palabra():
     """
     Selecciona una palabra aleatoria desde la base de datos SQLite.
-
-    Returns:
-        str: Palabra seleccionada en mayúsculas.
+    Evita repetir la misma palabra dos veces seguidas.
     """
+    global ultima_palabra
     conn = sqlite3.connect("palabras.db")
     cursor = conn.cursor()
     cursor.execute("SELECT palabra FROM palabras ORDER BY RANDOM() LIMIT 1")
     palabra = cursor.fetchone()[0]
     conn.close()
+
+    # Si es la misma que la anterior, vuelve a buscar
+    while palabra == ultima_palabra:
+        conn = sqlite3.connect("palabras.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT palabra FROM palabras ORDER BY RANDOM() LIMIT 1")
+        palabra = cursor.fetchone()[0]
+        conn.close()
+
+    ultima_palabra = palabra
     return palabra
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """
     Página de inicio del juego.
-
-    Args:
-        request (Request): Objeto de solicitud HTTP.
-
-    Returns:
-        HTMLResponse: Renderiza la plantilla index.html
     """
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -52,9 +58,6 @@ async def nuevo_juego():
     Inicia una nueva partida:
     - Selecciona una palabra aleatoria de la base de datos.
     - Reinicia las letras usadas y los intentos.
-
-    Returns:
-        RedirectResponse: Redirige a la página de juego.
     """
     juego["palabra"] = obtener_palabra()
     juego["letras_usadas"] = []
@@ -68,12 +71,6 @@ async def jugar(request: Request):
     - Palabra parcial (letras adivinadas y guiones bajos).
     - Intentos restantes.
     - Letras ya usadas.
-
-    Args:
-        request (Request): Objeto de solicitud HTTP.
-
-    Returns:
-        HTMLResponse: Renderiza la plantilla game.html con datos del juego.
     """
     palabra_mostrada = " ".join([letra if letra in juego["letras_usadas"] else "_" for letra in juego["palabra"]])
     fin = juego["intentos"] <= 0 or set(juego["palabra"]).issubset(set(juego["letras_usadas"]))
@@ -93,12 +90,6 @@ async def intento(letra: str = Form(...)):
     - Valida la letra ingresada.
     - Agrega la letra a la lista de usadas.
     - Resta un intento si la letra no pertenece a la palabra.
-
-    Args:
-        letra (str): Letra ingresada por el usuario.
-
-    Returns:
-        RedirectResponse: Redirige nuevamente a la página del juego.
     """
     letra = letra.upper()
     if letra not in juego["letras_usadas"]:
